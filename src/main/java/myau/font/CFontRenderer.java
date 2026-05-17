@@ -8,6 +8,7 @@ import org.lwjgl.opengl.GL11;
 
 import java.awt.*;
 import java.io.File;
+import java.io.InputStream;
 import java.util.LinkedHashSet;
 import java.util.ArrayList;
 import java.util.List;
@@ -487,6 +488,25 @@ public class CFontRenderer extends CFont {
             try {
                 Font font = Font.createFont(fontType, Minecraft.getMinecraft().getResourceManager().getResource(location).getInputStream());
                 return font.deriveFont(fontSize);
+            } catch (Exception ignored) {
+            }
+        }
+
+        // Classloader fallback — works inside JARs even when Minecraft's ResourceManager isn't ready
+        String[] classpathPaths = new String[]{
+                "/assets/myau/font/" + fontFileName,
+                "/assets/myau/font/" + lowerCaseFileName,
+                "/assets/client/fonts/" + fontFileName,
+                "/assets/client/fonts/" + lowerCaseFileName
+        };
+        for (String path : classpathPaths) {
+            try {
+                InputStream stream = CFontRenderer.class.getResourceAsStream(path);
+                if (stream != null) {
+                    Font font = Font.createFont(fontType, stream);
+                    stream.close();
+                    return font.deriveFont(fontSize);
+                }
             } catch (Exception ignored) {
             }
         }
