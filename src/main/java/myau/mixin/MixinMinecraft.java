@@ -6,6 +6,7 @@ import myau.event.EventManager;
 import myau.event.types.EventType;
 import myau.events.*;
 import myau.module.modules.NoHitDelay;
+import myau.ui.impl.mainmenu.MyauMainMenu;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.gui.GuiScreen;
@@ -35,6 +36,18 @@ public abstract class MixinMinecraft {
     public EntityPlayerSP thePlayer;
     @Shadow
     public GuiScreen currentScreen;
+
+    @Inject(
+            method = {"displayGuiScreen"},
+            at = {@At("HEAD")},
+            cancellable = true
+    )
+    private void replaceMainMenu(GuiScreen guiScreen, CallbackInfo callbackInfo) {
+        if (isVanillaMainMenu(guiScreen)) {
+            displayMyauMainMenu();
+            callbackInfo.cancel();
+        }
+    }
 
     @Inject(
             method = {"startGame"},
@@ -70,6 +83,17 @@ public abstract class MixinMinecraft {
         if (this.theWorld != null && this.thePlayer != null) {
             EventManager.call(new TickEvent(EventType.POST));
         }
+        if (isVanillaMainMenu(this.currentScreen)) {
+            displayMyauMainMenu();
+        }
+    }
+
+    private boolean isVanillaMainMenu(GuiScreen guiScreen) {
+        return guiScreen != null && "net.minecraft.client.gui.GuiMainMenu".equals(guiScreen.getClass().getName());
+    }
+
+    private void displayMyauMainMenu() {
+        ((Minecraft) (Object) this).displayGuiScreen(new MyauMainMenu());
     }
 
     @Inject(

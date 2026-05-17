@@ -29,7 +29,7 @@ public class Speed extends Module {
     }
 
     public Speed() {
-        super("Speed", false);
+        super("Speed", false, false, "W SPEED :SKULL:");
     }
 
     @EventTarget(Priority.LOW)

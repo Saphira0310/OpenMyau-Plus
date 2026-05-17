@@ -49,7 +49,7 @@ public class HitBox extends Module {
     public final BooleanProperty botCheck = new BooleanProperty("bot-check", true, () -> this.showHitbox.getValue() == 1 || this.showHitbox.getValue() == 4);
 
     public HitBox() {
-        super("HitBox", false);
+        super("HitBox", false, false, "Expands the hitbox of entities, making them easier to hit. Also has an option to render the expanded hitboxes.");
     }
 
     public static float getExpansion(Entity entity) {

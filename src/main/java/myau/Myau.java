@@ -6,6 +6,7 @@ import myau.command.CommandManager;
 import myau.command.commands.*;
 import myau.config.Config;
 import myau.event.EventManager;
+import myau.font.FontManagers;
 import myau.management.*;
 import myau.module.Module;
 import myau.module.ModuleManager;
@@ -36,6 +37,8 @@ public class Myau {
     public static ModuleManager moduleManager;
     public static NotificationManager notificationManager;
     public static CommandManager commandManager;
+    private static boolean anticheatRegistered;
+    public static FontManagers fontManagers;
 
     public Myau() {
         this.init();
@@ -54,6 +57,8 @@ public class Myau {
         moduleManager = new ModuleManager();
         notificationManager = new NotificationManager();
         commandManager = new CommandManager();
+        fontManagers = new FontManagers();
+        fontManagers.load();
         EventManager.register(rotationManager);
         EventManager.register(floatManager);
         EventManager.register(blinkManager);
@@ -61,6 +66,7 @@ public class Myau {
         EventManager.register(lagManager);
         EventManager.register(moduleManager);
         EventManager.register(commandManager);
+        registerClientAnticheat();
         moduleManager.modules.put(AimAssist.class, new AimAssist());
         moduleManager.modules.put(AntiAFK.class, new AntiAFK());
         moduleManager.modules.put(AntiDebuff.class, new AntiDebuff());
@@ -85,6 +91,7 @@ public class Myau {
         moduleManager.modules.put(WaterMark.class, new WaterMark());
         moduleManager.modules.put(ChestESP.class, new ChestESP());
         moduleManager.modules.put(ClickGUIModule.class, new ClickGUIModule());
+        moduleManager.modules.put(RiseClickGUIModule.class, new RiseClickGUIModule());
         moduleManager.modules.put(ChestStealer.class, new ChestStealer());
         moduleManager.modules.put(Eagle.class, new Eagle());
         moduleManager.modules.put(ESP.class, new ESP());
@@ -134,6 +141,7 @@ public class Myau {
         moduleManager.modules.put(SprintReset.class, new SprintReset());
         moduleManager.modules.put(Radar.class, new Radar());
         moduleManager.modules.put(Reach.class, new Reach());
+        moduleManager.modules.put(RenderFixes.class, new RenderFixes());
         moduleManager.modules.put(Refill.class, new Refill());
         moduleManager.modules.put(SafeWalk.class, new SafeWalk());
         moduleManager.modules.put(DynamicIsland.class, new DynamicIsland());
@@ -147,6 +155,7 @@ public class Myau {
         moduleManager.modules.put(TargetHUD.class, new TargetHUD());
         moduleManager.modules.put(TargetStrafe.class, new TargetStrafe());
         moduleManager.modules.put(Tracers.class, new Tracers());
+        moduleManager.modules.put(WaterMark2.class, new WaterMark2());
         moduleManager.modules.put(TimerRangev999.class, new TimerRangev999());
         moduleManager.modules.put(Trajectories.class, new Trajectories());
         moduleManager.modules.put(Velocity.class, new Velocity());
@@ -215,5 +224,18 @@ public class Myau {
             version = "dev";
         }
 
+    }
+
+    private void registerClientAnticheat() {
+        if (anticheatRegistered) {
+            return;
+        }
+
+        EventManager.register(new myau.anticheat.flag());
+        EventManager.register(new myau.anticheat.AutoBlock());
+        EventManager.register(new myau.anticheat.Noslow());
+        EventManager.register(new myau.anticheat.KillAura());
+        EventManager.register(new myau.anticheat.Scaffold());
+        anticheatRegistered = true;
     }
 }

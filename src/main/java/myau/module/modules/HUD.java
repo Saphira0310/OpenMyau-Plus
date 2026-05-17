@@ -21,8 +21,10 @@ import net.minecraft.client.renderer.GlStateManager;
 import org.lwjgl.opengl.GL11;
 
 import java.awt.*;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
@@ -44,6 +46,7 @@ public class HUD extends Module {
     public final IntProperty offsetX = new IntProperty("offset-x", 2, 0, 255);
     public final IntProperty offsetY = new IntProperty("offset-y", 2, 0, 255);
     public final FloatProperty scale = new FloatProperty("scale", 1.0F, 0.5F, 1.5F);
+    public final ModeProperty interfaceMode = new ModeProperty("interface", 0, new String[]{"MYAU", "CREIDA"});
     public final PercentProperty background = new PercentProperty("background", 25);
     public final BooleanProperty showBar = new BooleanProperty("bar", true);
     public final BooleanProperty shadow = new BooleanProperty("shadow", true);
@@ -54,7 +57,12 @@ public class HUD extends Module {
     public final BooleanProperty blinkTimer = new BooleanProperty("blink-timer", true);
     public final BooleanProperty toggleSound = new BooleanProperty("toggle-sounds", true);
     public final BooleanProperty toggleAlerts = new BooleanProperty("toggle-alerts", false);
-    public final ModeProperty fontMode = new ModeProperty("font-mode", 0, new String[]{"SANS", "MINECRAFT"});
+    public final ModeProperty fontMode = new ModeProperty("font-mode", 0, new String[]{"SANS", "MINECRAFT", "NUNITO"});
+    public final BooleanProperty creidaFont = new BooleanProperty("creida-font", true, () -> this.interfaceMode.getValue() == 1);
+    public final BooleanProperty creidaWatermark = new BooleanProperty("creida-watermark", true, () -> this.interfaceMode.getValue() == 1);
+    public final BooleanProperty rounded = new BooleanProperty("rounded", true);
+    public final FloatProperty cornerRadius = new FloatProperty("corner-radius", 4.0F, 1.0F, 8.0F, () -> rounded.getValue());
+    public final FloatProperty padding = new FloatProperty("padding", 2.0F, 0.0F, 6.0F);
 
     private String getModuleName(Module module) {
         String moduleName = module.getName();
@@ -65,6 +73,7 @@ public class HUD extends Module {
     }
 
     CFontRenderer fontRenderer;
+    private CFontRenderer nunitoFontRenderer;
     private final net.minecraft.client.gui.FontRenderer mcFont = mc.fontRendererObj;
     private int lastFontMode = -1; // Cache to prevent unnecessary updates
 
@@ -80,6 +89,9 @@ public class HUD extends Module {
 
 
     private int getModuleWidth(Module module) {
+        if (this.interfaceMode.getValue() == 1) {
+            return Math.round(this.getCreidaModuleWidth(module));
+        }
         return this.calculateStringWidth(
                 this.getModuleName(module), this.getModuleSuffix(module)
         );
@@ -119,7 +131,7 @@ public class HUD extends Module {
     }
 
     public HUD() {
-        super("HUD", true, true);
+        super("HUD", true, true, "Wdym It HUD u never know it :?");
         updateFontRenderer();
     }
 
@@ -128,25 +140,40 @@ public class HUD extends Module {
         if (lastFontMode == fontMode.getValue()) {
             return;
         }
-        
-        lastFontMode = fontMode.getValue();
-        
+
+        CFontRenderer selectedFont;
         switch (fontMode.getValue()) {
             case 0: // SANS
-                fontRenderer = FontProcess.getFont("sans");
+                selectedFont = FontProcess.getFont("sans");
                 break;
             case 1: // MINECRAFT - handled separately
-                fontRenderer = FontProcess.getFont("sans");
+                selectedFont = FontProcess.getFont("sans");
+                break;
+            case 2: // NUNITO
+                selectedFont = getNunitoFontRenderer();
                 break;
             default:
-                fontRenderer = FontProcess.getFont("sans");
+                selectedFont = FontProcess.getFont("sans");
                 break;
         }
-        
-        // Debug: Check if font renderer is null
-        if (fontRenderer == null) {
+
+        if (selectedFont == null) {
+            System.err.println("[Myau] Failed to resolve HUD font mode: " + fontMode.getModeString());
             fontRenderer = FontProcess.getFont("sans");
+            lastFontMode = -1;
+            return;
         }
+
+        fontRenderer = selectedFont;
+        lastFontMode = fontMode.getValue();
+    }
+
+    private CFontRenderer getNunitoFontRenderer() {
+        if (nunitoFontRenderer == null) {
+            nunitoFontRenderer = new CFontRenderer("nunito", 18, Font.PLAIN, true, false);
+            System.out.println("[Myau] HUD Nunito loaded as: " + nunitoFontRenderer.getFont().getFontName());
+        }
+        return nunitoFontRenderer;
     }
 
     public Color getColor(long time) {
@@ -226,6 +253,9 @@ public class HUD extends Module {
             }
         }
         if (this.isEnabled() && !mc.gameSettings.showDebugInfo) {
+            if (this.interfaceMode.getValue() == 1) {
+                renderCreidaInterface();
+            } else {
             float height = (float) fontRenderer.FONT_HEIGHT - 1.0F;
             float x = (float) this.offsetX.getValue()
                     + (1.0F + (this.showBar.getValue() ? (this.shadow.getValue() ? 2.0F : 1.0F) : 0.0F)) * this.scale.getValue();
@@ -249,36 +279,54 @@ public class HUD extends Module {
                 int color = this.getColor(l, offset).getRGB();
                 RenderUtil.enableRenderState();
                 if (this.background.getValue() > 0) {
-                    RenderUtil.drawRect(
-                            x / this.scale.getValue() - 1.0F - (this.posX.getValue() == 0 ? 0.0F : totalWidth),
-                            y / this.scale.getValue() - (this.posY.getValue() == 0 ? (offset == 0L ? 1.0F : 0.0F) : (this.shadow.getValue() ? 1.0F : 0.0F)),
-                            x / this.scale.getValue() + 1.0F + (this.posX.getValue() == 0 ? totalWidth : 0.0F),
-                            y / this.scale.getValue() + height + (this.posY.getValue() == 0 ? (this.shadow.getValue() ? 1.0F : 0.0F) : (offset == 0L ? 1.0F : 0.0F)),
-                            new Color(0.0F, 0.0F, 0.0F, this.background.getValue().floatValue() / 100.0F).getRGB()
-                    );
+                    float pad = this.padding.getValue();
+                    float bgX1 = x / this.scale.getValue() - 1.0F - pad - (this.posX.getValue() == 0 ? 0.0F : totalWidth);
+                    float bgY1 = y / this.scale.getValue() - pad - (this.posY.getValue() == 0 ? (offset == 0L ? 1.0F : 0.0F) : (this.shadow.getValue() ? 1.0F : 0.0F));
+                    float bgX2 = x / this.scale.getValue() + 1.0F + pad + (this.posX.getValue() == 0 ? totalWidth : 0.0F);
+                    float bgY2 = y / this.scale.getValue() + height + pad + (this.posY.getValue() == 0 ? (this.shadow.getValue() ? 1.0F : 0.0F) : (offset == 0L ? 1.0F : 0.0F));
+                    int bgColor = new Color(0.0F, 0.0F, 0.0F, this.background.getValue().floatValue() / 100.0F).getRGB();
+                    if (this.rounded.getValue()) {
+                        float bgW = bgX2 - bgX1;
+                        float bgH = bgY2 - bgY1;
+                        float rad = this.cornerRadius.getValue();
+                        boolean isFirst = (offset == 0L);
+                        boolean isLast = (offset == this.activeModules.size() - 1);
+                        boolean sideLeft = this.posX.getValue() == 1;
+                        boolean sideRight = this.posX.getValue() == 0;
+                        boolean isTopEntry = (this.posY.getValue() == 0) ? isFirst : isLast;
+                        boolean isBottomEntry = (this.posY.getValue() == 0) ? isLast : isFirst;
+                        RenderUtil.drawRoundedRect(
+                                bgX1, bgY1, bgW, bgH, rad, bgColor,
+                                sideLeft && isTopEntry, sideRight && isTopEntry,
+                                sideLeft && isBottomEntry, sideRight && isBottomEntry
+                        );
+                    } else {
+                        RenderUtil.drawRect(bgX1, bgY1, bgX2, bgY2, bgColor);
+                    }
                 }
                 if (this.showBar.getValue()) {
+                    float pad = this.padding.getValue();
                     if (this.shadow.getValue()) {
                         RenderUtil.drawRect(
                                 x / this.scale.getValue() + (this.posX.getValue() == 0 ? -3.0F : 1.0F),
-                                y / this.scale.getValue() - (this.posY.getValue() == 0 ? (offset == 0L ? 1.0F : 0.0F) : 1.0F),
+                                y / this.scale.getValue() - pad - (this.posY.getValue() == 0 ? (offset == 0L ? 1.0F : 0.0F) : 1.0F),
                                 x / this.scale.getValue() + (this.posX.getValue() == 0 ? -2.0F : 2.0F),
-                                y / this.scale.getValue() + height + (this.posY.getValue() == 0 ? 1.0F : (offset == 0L ? 1.0F : 0.0F)),
+                                y / this.scale.getValue() + height + pad + (this.posY.getValue() == 0 ? 1.0F : (offset == 0L ? 1.0F : 0.0F)),
                                 color
                         );
                         RenderUtil.drawRect(
                                 x / this.scale.getValue() + (this.posX.getValue() == 0 ? -2.0F : 2.0F),
-                                y / this.scale.getValue() - (this.posY.getValue() == 0 ? (offset == 0L ? 1.0F : 0.0F) : 1.0F),
+                                y / this.scale.getValue() - pad - (this.posY.getValue() == 0 ? (offset == 0L ? 1.0F : 0.0F) : 1.0F),
                                 x / this.scale.getValue() + (this.posX.getValue() == 0 ? -1.0F : 3.0F),
-                                y / this.scale.getValue() + height + (this.posY.getValue() == 0 ? 1.0F : (offset == 0L ? 1.0F : 0.0F)),
+                                y / this.scale.getValue() + height + pad + (this.posY.getValue() == 0 ? 1.0F : (offset == 0L ? 1.0F : 0.0F)),
                                 (color & 16579836) >> 2 | color & 0xFF000000
                         );
                     } else {
                         RenderUtil.drawRect(
                                 x / this.scale.getValue() + (this.posX.getValue() == 0 ? -2.0F : 1.0F),
-                                y / this.scale.getValue() - (this.posY.getValue() == 0 ? (offset == 0L ? 1.0F : 0.0F) : 0.0F),
+                                y / this.scale.getValue() - pad - (this.posY.getValue() == 0 ? (offset == 0L ? 1.0F : 0.0F) : 0.0F),
                                 x / this.scale.getValue() + (this.posX.getValue() == 0 ? -1.0F : 2.0F),
-                                y / this.scale.getValue() + height + (this.posY.getValue() == 0 ? 0.0F : (offset == 0L ? 1.0F : 0.0F)),
+                                y / this.scale.getValue() + height + pad + (this.posY.getValue() == 0 ? 0.0F : (offset == 0L ? 1.0F : 0.0F)),
                                 color
                         );
                     }
@@ -359,7 +407,7 @@ public class HUD extends Module {
                         width += (fontMode.getValue() == 1 ? (float) mcFont.getStringWidth(string) : (float) fontRenderer.getStringWidth(string)) + (this.shadow.getValue() ? 3.0F : 2.0F);
                     }
                 }
-                y += (height + (this.shadow.getValue() ? 1.0F : 0.0F)) * this.scale.getValue() * (this.posY.getValue() == 0 ? 1.0F : -1.0F);
+                y += (height + (this.shadow.getValue() ? 1.0F : 0.0F) + this.padding.getValue() * 2.0F) * this.scale.getValue() * (this.posY.getValue() == 0 ? 1.0F : -1.0F);
                 offset++;
             }
             if (this.blinkTimer.getValue()) {
@@ -396,55 +444,320 @@ public class HUD extends Module {
             GlStateManager.popMatrix();
 
 
-        }
-        // Render bottom-right transient notifications (e.g., module toggles)
-        try {
-            if (Myau.notificationManager != null) {
-                java.util.List<myau.management.NotificationManager.NotificationEntry> entries = Myau.notificationManager.getActive();
-                if (!entries.isEmpty()) {
-                    ScaledResolution sr = new ScaledResolution(mc);
-                    float baseX = sr.getScaledWidth() - 6.0F; // right padding
-                    float baseY = sr.getScaledHeight() - 6.0F; // bottom padding
-                    // render newest last, so iterate normally but compute offset from bottom
-                    for (int i = entries.size() - 1; i >= 0; i--) {
-                        myau.management.NotificationManager.NotificationEntry entry = entries.get(i);
-                        String text = entry.message;
-                        float textWidth = mc.fontRendererObj.getStringWidth(text);
-                        float boxWidth = textWidth + 8.0F;
-                        float boxHeight = mc.fontRendererObj.FONT_HEIGHT + 6.0F;
-                        float x = baseX - boxWidth / this.scale.getValue();
-                        float y = baseY - boxHeight / this.scale.getValue() - (entries.size() - 1 - i) * (boxHeight + 4.0F) / this.scale.getValue();
-
-                        // fade alpha based on remaining time (simple)
-                        float age = entry.getAge();
-                        float alpha = 1.0F;
-                        if (entry.durationMillis > 0) {
-                            alpha = Math.max(0.0F, Math.min(1.0F, 1.0F - (age / (float) entry.durationMillis)));
-                        }
-                        int bg = new Color(0, 0, 0, (int) (150 * alpha)).getRGB();
-                        // use entry.color for border/text, applying alpha
-                        int baseColor = entry.color;
-                        int r = (baseColor >> 16) & 0xFF;
-                        int g = (baseColor >> 8) & 0xFF;
-                        int bCol = baseColor & 0xFF;
-                        int border = new Color(r, g, bCol, (int) (200 * alpha)).getRGB();
-
-                        RenderUtil.enableRenderState();
-                        RenderUtil.drawRect(x, y, x + boxWidth / this.scale.getValue(), y + boxHeight / this.scale.getValue(), bg);
-                        RenderUtil.drawOutlineRect(x, y, x + boxWidth / this.scale.getValue(), y + boxHeight / this.scale.getValue(), 1.0F, 0, border);
-                        RenderUtil.disableRenderState();
-
-                        GlStateManager.pushMatrix();
-                        GlStateManager.scale(this.scale.getValue(), this.scale.getValue(), 0.0F);
-                        // text color with alpha
-                        int textColor = new Color(r, g, bCol, (int) (255 * alpha)).getRGB();
-                        mc.fontRendererObj.drawStringWithShadow(text, x + 4.0F / this.scale.getValue(), y + 3.0F / this.scale.getValue(), textColor);
-                        GlStateManager.popMatrix();
-                    }
-                }
             }
+        }
+        renderNotifications();
+    }
+
+    private void renderCreidaInterface() {
+        ScaledResolution sr = new ScaledResolution(mc);
+        float hudScale = Math.max(0.5F, Math.min(1.5F, this.scale.getValue()));
+        float scaledWidth = sr.getScaledWidth() / hudScale;
+        float edgeOffset = Math.max(3.0F, this.offsetX.getValue());
+        float right = scaledWidth - edgeOffset;
+        float y = Math.max(3.0F, this.offsetY.getValue() + 1.0F);
+        float entryHeight = getCreidaEntryHeight();
+        long time = System.currentTimeMillis();
+
+        GlStateManager.pushMatrix();
+        GlStateManager.scale(hudScale, hudScale, 1.0F);
+
+        if (this.creidaWatermark.getValue()) {
+            renderCreidaWatermark(time);
+        }
+
+        long offset = 0L;
+        for (Module module : this.activeModules) {
+            renderCreidaModule(module, right, y, time, offset, entryHeight);
+            y += entryHeight;
+            offset++;
+        }
+
+        GlStateManager.popMatrix();
+    }
+
+    private void renderCreidaModule(Module module, float right, float y, long time, long offset, float entryHeight) {
+        String moduleName = this.getModuleName(module);
+        String[] moduleSuffix = this.getModuleSuffix(module);
+        float nameWidth = this.getCreidaTextWidth(moduleName);
+        float tagWidth = this.getCreidaTagWidth(moduleSuffix);
+        float boxWidth = nameWidth + tagWidth + 7.0F;
+        float boxHeight = entryHeight;
+        float x = right - boxWidth;
+        float textY = y + getCreidaTextOffset(entryHeight);
+        int accent = this.getColor(time, offset).getRGB();
+        int backgroundColor = new Color(0, 0, 0, 110).getRGB();
+        int depthColor = new Color(0, 0, 0, 65).getRGB();
+
+        RenderUtil.enableRenderState();
+        RenderUtil.drawRect(x - 1.0F, y, x + boxWidth, y + boxHeight, depthColor);
+        RenderUtil.drawRect(x - 1.0F, y, x + boxWidth, y + boxHeight, backgroundColor);
+        RenderUtil.drawRect(x + boxWidth - 1.0F, y, x + boxWidth, y + boxHeight, accent);
+        RenderUtil.disableRenderState();
+
+        GlStateManager.disableDepth();
+        drawCreidaStringWithShadow(moduleName, x + 1.0F, textY, accent);
+
+        if (this.suffixes.getValue() && moduleSuffix.length > 0) {
+            float suffixX = x + 1.0F + nameWidth + 4.0F;
+            for (String suffix : moduleSuffix) {
+                drawCreidaStringWithShadow(suffix, suffixX, textY, 0xFFCCCCCC);
+                suffixX += this.getCreidaTextWidth(suffix) + 3.0F;
+            }
+        }
+        GlStateManager.enableDepth();
+    }
+
+    private void renderCreidaWatermark(long time) {
+        String text = getCreidaWatermarkText();
+        float textWidth = getCreidaTextWidth(text);
+        float boxWidth = textWidth + 8.0F;
+        float boxHeight = Math.max(15.0F, getCreidaTextHeight() + 6.0F);
+        float x = 2.0F;
+        float y = 3.0F;
+
+        RenderUtil.drawRoundedRect(x, y, boxWidth, boxHeight, 4.0F,
+                new Color(0, 0, 0, 100).getRGB(), true, true, true, true);
+
+        GlStateManager.resetColor();
+        GlStateManager.disableDepth();
+
+        float currentX = x + 4.0F;
+        float textY = y + (boxHeight - getCreidaTextHeight()) / 2.0F + 1.0F;
+        for (int i = 0; i < text.length(); i++) {
+            String character = String.valueOf(text.charAt(i));
+            int color = this.getColor(time, (long) (i * this.colorDistance.getValue())).getRGB();
+            drawCreidaStringWithShadow(character, currentX, textY, color);
+            currentX += getCreidaTextWidth(character);
+        }
+
+        GlStateManager.enableDepth();
+    }
+
+    private String getCreidaWatermarkText() {
+        String playerName = mc.thePlayer == null ? "Player" : mc.thePlayer.getName();
+        String versionText = Myau.version == null ? "dev" : Myau.version;
+        String time = new SimpleDateFormat("HH:mm:ss").format(new Date());
+        return "Myau+ Client | " + versionText + " | " + playerName + " | " + time;
+    }
+
+    private float getCreidaModuleWidth(Module module) {
+        return getCreidaTextWidth(this.getModuleName(module)) + getCreidaTagWidth(this.getModuleSuffix(module)) + 7.0F;
+    }
+
+    private float getCreidaTagWidth(String[] suffixes) {
+        if (!this.suffixes.getValue() || suffixes.length == 0) {
+            return 1.0F;
+        }
+
+        float width = 0.0F;
+        for (String suffix : suffixes) {
+            width += this.getCreidaTextWidth(suffix) + 3.0F;
+        }
+        return width + 1.0F;
+    }
+
+    private float getCreidaEntryHeight() {
+        return Math.max(14.0F, this.getCreidaTextHeight() + 5.0F);
+    }
+
+    private float getCreidaTextOffset(float entryHeight) {
+        return Math.max(2.0F, (entryHeight - this.getCreidaTextHeight()) / 2.0F);
+    }
+
+    private float getCreidaTextWidth(String text) {
+        if (isCreidaMinecraftFont()) {
+            return mcFont.getStringWidth(text);
+        }
+        return fontRenderer.getStringWidth(text);
+    }
+
+    private float getCreidaTextHeight() {
+        if (isCreidaMinecraftFont()) {
+            return mcFont.FONT_HEIGHT;
+        }
+        return fontRenderer.FONT_HEIGHT;
+    }
+
+    private void drawCreidaStringWithShadow(String text, float x, float y, int color) {
+        GlStateManager.enableBlend();
+        GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        if (isCreidaMinecraftFont()) {
+            mcFont.drawStringWithShadow(text, x, y, color);
+        } else {
+            fontRenderer.drawStringWithShadow(text, x, y, color);
+        }
+        GlStateManager.disableBlend();
+    }
+
+    private boolean isCreidaMinecraftFont() {
+        return !this.creidaFont.getValue() || this.fontMode.getValue() == 1;
+    }
+
+    private void renderNotifications() {
+        try {
+            if (Myau.notificationManager == null) return;
+
+            java.util.List<myau.management.NotificationManager.NotificationEntry> entries = Myau.notificationManager.getActive();
+            if (entries.isEmpty()) return;
+
+            float notificationScale = Math.max(0.5F, Math.min(1.5F, this.scale.getValue()));
+            ScaledResolution sr = new ScaledResolution(mc);
+            float scaledWidth = sr.getScaledWidth() / notificationScale;
+            float scaledHeight = sr.getScaledHeight() / notificationScale;
+            float margin = 8.0F;
+            float paddingX = 8.0F;
+            float paddingY = 5.0F;
+            float spacing = 4.0F;
+            float y = scaledHeight - margin;
+
+            GlStateManager.pushMatrix();
+            GlStateManager.scale(notificationScale, notificationScale, 1.0F);
+
+            for (int i = entries.size() - 1; i >= 0; i--) {
+                myau.management.NotificationManager.NotificationEntry entry = entries.get(i);
+                float alpha = notificationAlpha(entry);
+                if (alpha <= 0.01F) continue;
+
+                String text = modernNotificationText(entry.message);
+                float textWidth = getHudTextWidth(text);
+                float textHeight = getHudTextHeight();
+                float boxWidth = Math.max(86.0F, textWidth + paddingX * 2.0F + 2.0F);
+                float boxHeight = textHeight + paddingY * 2.0F + 3.0F;
+                float x = scaledWidth - margin - boxWidth;
+                y -= boxHeight;
+
+                drawModernNotification(entry, text, x, y, boxWidth, boxHeight, paddingX, paddingY, alpha);
+                y -= spacing;
+            }
+
+            GlStateManager.popMatrix();
         } catch (Exception ignored) {
         }
+    }
+
+    private void drawModernNotification(myau.management.NotificationManager.NotificationEntry entry, String text,
+                                        float x, float y, float boxWidth, float boxHeight,
+                                        float paddingX, float paddingY, float alpha) {
+        float motion = notificationMotion(entry);
+        float slide = (1.0F - motion) * 14.0F + (1.0F - alpha) * 5.0F;
+        float renderX = x + slide;
+        int statusColor = notificationStatusColor(text, alpha);
+        int glass = new Color(10, 12, 16, (int) (92 * alpha)).getRGB();
+        int hoverLayer = new Color(255, 255, 255, (int) (9 * alpha)).getRGB();
+        int border = new Color(255, 255, 255, (int) (24 * alpha)).getRGB();
+        int depth = new Color(0, 0, 0, (int) (28 * alpha)).getRGB();
+        int neutralText = new Color(238, 241, 245, (int) (242 * alpha)).getRGB();
+        float radius = 6.0F;
+
+        RenderUtil.drawRoundedRect(renderX + 1.0F, y + 1.5F, boxWidth, boxHeight, radius + 1.0F,
+                depth, true, true, true, true);
+        RenderUtil.drawRoundedRect(renderX, y, boxWidth, boxHeight, radius,
+                glass, true, true, true, true);
+        RenderUtil.drawRoundedRect(renderX + 1.0F, y + 1.0F, boxWidth - 2.0F, boxHeight - 2.0F, radius - 1.0F,
+                hoverLayer, true, true, true, true);
+        RenderUtil.drawRoundedRectOutline(renderX + 0.5F, y + 0.5F, boxWidth - 1.0F, boxHeight - 1.0F,
+                radius, 1.0F, border, true, true, true, true);
+
+        float progress = notificationProgress(entry);
+        float progressX = renderX + 8.0F;
+        float progressY = y + boxHeight - 2.0F;
+        float progressW = boxWidth - 16.0F;
+        RenderUtil.drawRoundedRect(progressX, progressY, progressW, 1.0F, 0.5F,
+                new Color(255, 255, 255, (int) (10 * alpha)).getRGB(), true, true, true, true);
+        RenderUtil.drawRoundedRect(progressX, progressY, Math.max(1.0F, progressW * progress), 1.0F, 0.5F,
+                statusColor, true, true, true, true);
+
+        drawNotificationText(text, renderX + paddingX + 1.0F, y + paddingY + 1.0F, neutralText, statusColor);
+    }
+
+    private float notificationAlpha(myau.management.NotificationManager.NotificationEntry entry) {
+        if (entry.durationMillis <= 0) return 1.0F;
+
+        float age = entry.getAge();
+        float remaining = entry.durationMillis - age;
+        float fade = Math.min(220.0F, entry.durationMillis / 3.0F);
+        float alpha = Math.min(1.0F, Math.min(age / fade, remaining / fade));
+        alpha = Math.max(0.0F, Math.min(1.0F, alpha));
+        return alpha * alpha * (3.0F - 2.0F * alpha);
+    }
+
+    private float notificationProgress(myau.management.NotificationManager.NotificationEntry entry) {
+        if (entry.durationMillis <= 0) return 1.0F;
+        return Math.max(0.0F, Math.min(1.0F, 1.0F - entry.getAge() / (float) entry.durationMillis));
+    }
+
+    private float notificationMotion(myau.management.NotificationManager.NotificationEntry entry) {
+        if (entry.durationMillis <= 0) return 1.0F;
+
+        float age = entry.getAge();
+        float remaining = entry.durationMillis - age;
+        float in = Math.max(0.0F, Math.min(1.0F, age / 260.0F));
+        float out = Math.max(0.0F, Math.min(1.0F, remaining / 220.0F));
+        float motion = Math.min(in, out);
+        return motion * motion * (3.0F - 2.0F * motion);
+    }
+
+    private String modernNotificationText(String message) {
+        if (message == null) return "";
+        return message
+                .replace(" was toggled successfully", " enabled")
+                .replace(" was untoggled successfully", " disabled");
+    }
+
+    private int softenColor(int rgb, float amount) {
+        amount = Math.max(0.0F, Math.min(1.0F, amount));
+        int r = (rgb >> 16) & 0xFF;
+        int g = (rgb >> 8) & 0xFF;
+        int b = rgb & 0xFF;
+        r += (int) ((255 - r) * amount);
+        g += (int) ((255 - g) * amount);
+        b += (int) ((255 - b) * amount);
+        return (r << 16) | (g << 8) | b;
+    }
+
+    private int notificationStatusColor(String text, float alpha) {
+        String lower = text.toLowerCase(Locale.ROOT);
+        int rgb = lower.endsWith(" enabled") ? 0x41D982 : lower.endsWith(" disabled") ? 0xFF5C6C : 0xE5E9F0;
+        return colorWithAlpha(rgb, (int) (245 * alpha));
+    }
+
+    private int colorWithAlpha(int rgb, int alpha) {
+        return new Color((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF,
+                Math.max(0, Math.min(255, alpha))).getRGB();
+    }
+
+    private float getHudTextWidth(String text) {
+        return fontMode.getValue() == 1 ? mcFont.getStringWidth(text) : fontRenderer.getStringWidth(text);
+    }
+
+    private float getHudTextHeight() {
+        return fontMode.getValue() == 1 ? mcFont.FONT_HEIGHT : fontRenderer.FONT_HEIGHT;
+    }
+
+    private void drawHudText(String text, float x, float y, int color) {
+        if (fontMode.getValue() == 1) {
+            mcFont.drawString(text, x, y, color, false);
+        } else {
+            fontRenderer.drawString(text, x, y, color, false);
+        }
+    }
+
+    private void drawNotificationText(String text, float x, float y, int neutralColor, int statusColor) {
+        String lower = text.toLowerCase(Locale.ROOT);
+        if (lower.endsWith(" enabled")) {
+            drawSplitNotificationText(text, " enabled", x, y, neutralColor, statusColor);
+        } else if (lower.endsWith(" disabled")) {
+            drawSplitNotificationText(text, " disabled", x, y, neutralColor, statusColor);
+        } else {
+            drawHudText(text, x, y, neutralColor);
+        }
+    }
+
+    private void drawSplitNotificationText(String text, String suffix, float x, float y, int neutralColor, int statusColor) {
+        String main = text.substring(0, text.length() - suffix.length());
+        drawHudText(main, x, y, neutralColor);
+        drawHudText(suffix.trim(), x + getHudTextWidth(main + " "), y, statusColor);
     }
 }
 

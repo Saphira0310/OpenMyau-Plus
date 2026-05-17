@@ -22,7 +22,7 @@ public class Reach extends Module {
     public final PercentProperty chance = new PercentProperty("chance", 100);
 
     public Reach() {
-        super("Reach", false);
+        super("Reach", false, false, "Reach higher using nano technologo make ur dick bigger to hit further");
     }
 
     @EventTarget

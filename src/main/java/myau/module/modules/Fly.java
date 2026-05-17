@@ -17,7 +17,7 @@ public class Fly extends Module {
     public final FloatProperty vSpeed = new FloatProperty("vertical-speed", 1.0F, 0.0F, 100.0F);
 
     public Fly() {
-        super("Fly", false);
+        super("Fly", false, false, "WE WE WE WE (flag) Fall Down NOOO" );
     }
 
     @EventTarget

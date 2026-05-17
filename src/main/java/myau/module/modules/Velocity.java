@@ -97,7 +97,7 @@ public class Velocity extends Module {
     private boolean jumpFlag = false;
 
     public Velocity() {
-        super("Velocity", false, false);
+        super("Velocity", false, false, "We Use Ur Dih to Remove KnockBack :D");
     }
 
     @Override

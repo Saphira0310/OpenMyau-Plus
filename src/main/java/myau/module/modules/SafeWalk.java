@@ -40,7 +40,7 @@ public class SafeWalk extends Module {
     }
 
     public SafeWalk() {
-        super("SafeWalk", false);
+        super("SafeWalk", false, false, "U cant js shift so u need safewalk ok:L");
     }
 
     @EventTarget

@@ -66,7 +66,7 @@ public class AimAssist extends Module {
     }
 
     public AimAssist() {
-        super("AimAssist", false);
+        super("AimAssist", false , false, "Assists your aim by subtly adjusting your view towards nearby targets when attacking.");
     }
 
     @EventTarget

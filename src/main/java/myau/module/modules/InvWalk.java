@@ -57,7 +57,7 @@ public class InvWalk extends Module {
     public final BooleanProperty lockMoveKey = new BooleanProperty("lock-move-dey", false);
 
     public InvWalk() {
-        super("InvWalk", false);
+        super("InvWalk", false, false, "idk");
     }
 
     public void pressMovementKeys(boolean skipSneak) {

@@ -20,6 +20,7 @@ public class FontManager {
             nbpInforma12, nbpInforma16, nbpInforma20, nbpInforma24, nbpInforma28, nbpInforma32,
             tahomaBold12, tahomaBold16, tahomaBold20, tahomaBold24, tahomaBold28, tahomaBold32,
             noti12, noti16, noti18, noti20, noti24, noti28, noti32,
+            nunito12, nunito16, nunito18, nunito20, nunito24, nunito28, nunito32, nunito48, nunito80,
             nunitoBold12, nunitoBold16, nunitoBold18, nunitoBold20, nunitoBold24, nunitoBold28, nunitoBold32, nunitoBold48, nunitoBold80, harmonyOS_Sans20;
 
     private static int prevScale;
@@ -101,6 +102,17 @@ public class FontManager {
             noti24 = new FontRenderer(FontUtil.getResource(locationMap, "noti.ttf", 24));
             noti28 = new FontRenderer(FontUtil.getResource(locationMap, "noti.ttf", 28));
             noti32 = new FontRenderer(FontUtil.getResource(locationMap, "noti.ttf", 32));
+
+            // Nunito
+            nunito12 = new FontRenderer(FontUtil.getResource(locationMap, "nunito.ttf", 12));
+            nunito16 = new FontRenderer(FontUtil.getResource(locationMap, "nunito.ttf", 16));
+            nunito18 = new FontRenderer(FontUtil.getResource(locationMap, "nunito.ttf", 18));
+            nunito20 = new FontRenderer(FontUtil.getResource(locationMap, "nunito.ttf", 20));
+            nunito24 = new FontRenderer(FontUtil.getResource(locationMap, "nunito.ttf", 24));
+            nunito28 = new FontRenderer(FontUtil.getResource(locationMap, "nunito.ttf", 28));
+            nunito32 = new FontRenderer(FontUtil.getResource(locationMap, "nunito.ttf", 32));
+            nunito48 = new FontRenderer(FontUtil.getResource(locationMap, "nunito.ttf", 48));
+            nunito80 = new FontRenderer(FontUtil.getResource(locationMap, "nunito.ttf", 80));
 
             // Nunito Bold
             nunitoBold12 = new FontRenderer(FontUtil.getResource(locationMap, "Nunito-Bold.ttf", 12));
@@ -306,6 +318,42 @@ public class FontManager {
             noti32.destroy();
             noti32 = null;
         }
+        if (nunito12 != null) {
+            nunito12.destroy();
+            nunito12 = null;
+        }
+        if (nunito16 != null) {
+            nunito16.destroy();
+            nunito16 = null;
+        }
+        if (nunito18 != null) {
+            nunito18.destroy();
+            nunito18 = null;
+        }
+        if (nunito20 != null) {
+            nunito20.destroy();
+            nunito20 = null;
+        }
+        if (nunito24 != null) {
+            nunito24.destroy();
+            nunito24 = null;
+        }
+        if (nunito28 != null) {
+            nunito28.destroy();
+            nunito28 = null;
+        }
+        if (nunito32 != null) {
+            nunito32.destroy();
+            nunito32 = null;
+        }
+        if (nunito48 != null) {
+            nunito48.destroy();
+            nunito48 = null;
+        }
+        if (nunito80 != null) {
+            nunito80.destroy();
+            nunito80 = null;
+        }
         if (nunitoBold12 != null) {
             nunitoBold12.destroy();
             nunitoBold12 = null;
@@ -355,4 +403,5 @@ public class FontManager {
     public static MinecraftFontRenderer getMinecraft() {
         return MinecraftFontRenderer.INSTANCE;
     }
+
 }

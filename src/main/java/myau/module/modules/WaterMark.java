@@ -195,6 +195,7 @@ public class WaterMark extends Module {
         GlStateManager.popMatrix();
     }
 
+
     private void renderWeedhackWatermark(float x, float y) {
         String text = "weedhack premium beta";
         float textWidth = mc.fontRendererObj.getStringWidth(text);

@@ -26,7 +26,7 @@ public class ServerLag extends Module {
     private int currentLatency = 0;
 
     public ServerLag() {
-        super("ServerLag", false);
+        super("ServerLag", false, false, "I feel the lag ");
     }
 
     @Override

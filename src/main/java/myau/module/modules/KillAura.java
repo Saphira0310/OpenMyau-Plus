@@ -137,7 +137,7 @@ public class KillAura extends Module {
     private long lastRotationUpdateTime = 0;
 
     public KillAura() {
-        super("KillAura", false, false);
+        super("KillAura", false, false, "Kill +999999 Aura");
         this.lastTickProcessed = 0;
 
         // 新增CPS模式属性

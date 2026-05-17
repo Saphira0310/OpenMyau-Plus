@@ -23,7 +23,7 @@ public class ThrowAura extends Module {
     private final TimerUtil timer = new TimerUtil();
 
     public ThrowAura() {
-        super("ThrowAura", false, true);
+        super("ThrowAura", false, true, "Throw ur ball to the enemy");
     }
 
     @EventTarget

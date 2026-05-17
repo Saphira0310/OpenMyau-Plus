@@ -22,7 +22,7 @@ public class Animations extends Module {
     public final IntProperty swingSpeed = new IntProperty("SwingSpeed", 0, 0, 100);
 
     public Animations() {
-        super("Animations", true);
+        super("Animations", true, false, "Customizes player animations like swinging and blocking.");
     }
 
     @Override

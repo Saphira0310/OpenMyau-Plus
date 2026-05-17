@@ -7,8 +7,12 @@ import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 
 import java.awt.*;
+import java.io.File;
+import java.util.LinkedHashSet;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 
 public class CFontRenderer extends CFont {
@@ -30,7 +34,7 @@ public class CFontRenderer extends CFont {
     String nameFontTTF;
 
     public CFontRenderer(String NameFontTTF, float size, int fonttype, boolean antiAlias, boolean fractionalMetrics) {
-        super(getFontFromTTF(new ResourceLocation("client/fonts/" + NameFontTTF+".ttf"), size,fonttype), antiAlias, fractionalMetrics);
+        super(getFontFromTTF(NameFontTTF + ".ttf", size, fonttype), antiAlias, fractionalMetrics);
         this.nameFontTTF = NameFontTTF;
         this.useMCustomFont = NameFontTTF.equalsIgnoreCase("mc");
         setupMinecraftColorcodes();
@@ -470,16 +474,64 @@ public class CFontRenderer extends CFont {
         }
     }
 
-    public static Font getFontFromTTF(ResourceLocation fontLocation, float fontSize, int fontType) {
-        Font output = null;
-        try {
-            output = Font.createFont(fontType, Minecraft.getMinecraft().getResourceManager().getResource(fontLocation).getInputStream());
-            output = output.deriveFont(fontSize);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return new Font("Default", fontType, (int) fontSize);
+    public static Font getFontFromTTF(String fontFileName, float fontSize, int fontType) {
+        String lowerCaseFileName = fontFileName.toLowerCase(Locale.ROOT);
+        ResourceLocation[] locations = new ResourceLocation[]{
+                new ResourceLocation("myau", "font/" + fontFileName),
+                new ResourceLocation("myau", "font/" + lowerCaseFileName),
+                new ResourceLocation("client/fonts/" + fontFileName),
+                new ResourceLocation("client/fonts/" + lowerCaseFileName)
+        };
+
+        for (ResourceLocation location : locations) {
+            try {
+                Font font = Font.createFont(fontType, Minecraft.getMinecraft().getResourceManager().getResource(location).getInputStream());
+                return font.deriveFont(fontSize);
+            } catch (Exception ignored) {
+            }
         }
-        return output;
+
+        for (File file : getDevFontFiles(fontFileName, lowerCaseFileName)) {
+            if (!file.isFile()) {
+                continue;
+            }
+            try {
+                Font font = Font.createFont(fontType, file);
+                return font.deriveFont(fontSize);
+            } catch (Exception ignored) {
+            }
+        }
+
+        System.err.println("[Myau] Failed to load CFontRenderer font: " + fontFileName);
+        return new Font("Default", fontType, (int) fontSize);
+    }
+
+    private static Set<File> getDevFontFiles(String fontFileName, String lowerCaseFileName) {
+        Set<File> files = new LinkedHashSet<>();
+        addDevFontFiles(files, new File(System.getProperty("user.dir")), fontFileName, lowerCaseFileName);
+
+        try {
+            File codeSource = new File(CFontRenderer.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+            addDevFontFiles(files, codeSource, fontFileName, lowerCaseFileName);
+        } catch (Exception ignored) {
+        }
+
+        return files;
+    }
+
+    private static void addDevFontFiles(Set<File> files, File start, String fontFileName, String lowerCaseFileName) {
+        File current = start;
+        if (current != null && current.isFile()) {
+            current = current.getParentFile();
+        }
+
+        for (int i = 0; current != null && i < 8; i++) {
+            files.add(new File(current, "src/main/resources/assets/myau/font/" + fontFileName));
+            files.add(new File(current, "src/main/resources/assets/myau/font/" + lowerCaseFileName));
+            files.add(new File(current, "assets/myau/font/" + fontFileName));
+            files.add(new File(current, "assets/myau/font/" + lowerCaseFileName));
+            current = current.getParentFile();
+        }
     }
 
     public float getMiddleOfBox(float height) {

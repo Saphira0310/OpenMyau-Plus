@@ -1,13 +1,14 @@
 package myau.anticheat;
 
+import myau.event.EventTarget;
+import myau.event.types.EventType;
+import myau.events.TickEvent;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockAir;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.BlockPos;
 import net.minecraft.world.World;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.gameevent.TickEvent;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -18,9 +19,9 @@ public class Scaffold {
     private final Map<String, Integer> blockPlaceCount = new HashMap<>();
     private static final Minecraft mc = Minecraft.getMinecraft();
 
-    @SubscribeEvent
-    public void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase == TickEvent.Phase.END && mc.thePlayer != null && mc.theWorld != null) {
+    @EventTarget
+    public void onClientTick(TickEvent event) {
+        if (event.getType() == EventType.POST && mc.thePlayer != null && mc.theWorld != null) {
             World world = mc.theWorld;
             long currentTick = world.getTotalWorldTime();
 

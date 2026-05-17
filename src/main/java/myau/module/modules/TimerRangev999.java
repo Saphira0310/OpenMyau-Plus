@@ -47,7 +47,7 @@ public class TimerRangev999 extends Module {
    public static float serverPitch;
 
    public TimerRangev999() {
-      super("TimerRangev999", false);
+      super("TimerRangev999", false, false, "Touch Ur Pussy ahh to remove the time (Please dont use it it broken)");
    }
 
    @Override

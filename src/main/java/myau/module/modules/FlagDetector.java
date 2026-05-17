@@ -8,7 +8,7 @@ import net.minecraft.network.play.server.S08PacketPlayerPosLook;
 
 public class FlagDetector extends Module {
     public FlagDetector() {
-        super("FlagDetector", false);
+        super("FlagDetector", false, true, "Detects server flags like lagback and teleportation");
     }
 
     @EventTarget

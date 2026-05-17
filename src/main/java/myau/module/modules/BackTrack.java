@@ -69,7 +69,7 @@ public class BackTrack extends Module {
    private Vec3 lastRealPos;
 
    public BackTrack() {
-      super("BackTrack", false);
+      super("BackTrack", false, true, "Basiclly Lags");
    }
 
    @Override
