@@ -16,7 +16,7 @@ public class WaterMark2 extends Module {
     public final BooleanProperty shadow = new BooleanProperty("Shadow", true);
 
     public WaterMark2() {
-        super("WaterMark2", true);
+        super("WaterMark2", false);
     }
 
     @EventTarget

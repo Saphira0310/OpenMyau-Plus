@@ -48,13 +48,10 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 public class BedNuker extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private static final long WHITELIST_SCAN_DELAY_MS = 1000L;
     private final TimerUtil timer = new TimerUtil();
     private final ArrayList<BlockPos> bedWhitelist = new ArrayList<BlockPos>();
     private final Color colorRed = new Color(ChatColors.RED.toAwtColor());
@@ -69,6 +66,7 @@ public class BedNuker extends Module {
     private boolean readyToBreak = false;
     private boolean breaking = false;
     private boolean waitingForStart = false;
+    private long whitelistScanAt = -1L;
     public final ModeProperty mode = new ModeProperty("mode", 0, new String[]{"NORMAL", "SWAP"});
     public final FloatProperty range = new FloatProperty("range", 4.5F, 3.0F, 6.0F);
     public final PercentProperty speed = new PercentProperty("speed", 0);
@@ -83,7 +81,7 @@ public class BedNuker extends Module {
     public final ModeProperty showProgress = new ModeProperty("show-progress", 1, new String[]{"NONE", "DEFAULT", "HUD"});
 
     private void resetBreaking() {
-        if (this.targetBed != null) {
+        if (this.targetBed != null && mc.theWorld != null && mc.thePlayer != null) {
             mc.theWorld.sendBlockBreakProgress(mc.thePlayer.getEntityId(), this.targetBed, -1);
         }
         this.targetBed = null;
@@ -93,6 +91,36 @@ public class BedNuker extends Module {
         this.isBed = false;
         this.readyToBreak = false;
         this.breaking = false;
+    }
+
+    private void scheduleWhitelistScan() {
+        this.whitelistScanAt = System.currentTimeMillis() + WHITELIST_SCAN_DELAY_MS;
+    }
+
+    private void runPendingWhitelistScan() {
+        if (this.whitelistScanAt == -1L || System.currentTimeMillis() < this.whitelistScanAt) {
+            return;
+        }
+        this.whitelistScanAt = -1L;
+        this.bedWhitelist.clear();
+        if (mc.theWorld == null || mc.thePlayer == null) {
+            return;
+        }
+
+        int sX = MathHelper.floor_double(mc.thePlayer.posX);
+        int sY = MathHelper.floor_double(mc.thePlayer.posY + (double) mc.thePlayer.getEyeHeight());
+        int sZ = MathHelper.floor_double(mc.thePlayer.posZ);
+        for (int i = sX - 25; i <= sX + 25; i++) {
+            for (int j = sY - 25; j <= sY + 25; j++) {
+                for (int k = sZ - 25; k <= sZ + 25; k++) {
+                    BlockPos blockPos = new BlockPos(i, j, k);
+                    Block block = mc.theWorld.getBlockState(blockPos).getBlock();
+                    if (block instanceof BlockBed) {
+                        this.bedWhitelist.add(blockPos);
+                    }
+                }
+            }
+        }
     }
 
     private float calcProgress() {
@@ -329,7 +357,11 @@ public class BedNuker extends Module {
 
     @EventTarget(Priority.HIGH)
     public void onTick(TickEvent event) {
-        if (this.isEnabled() && event.getType() == EventType.PRE) {
+        if (event.getType() == EventType.PRE) {
+            this.runPendingWhitelistScan();
+            if (!this.isEnabled()) {
+                return;
+            }
             AutoBlockIn autoBlockIn = (AutoBlockIn) Myau.moduleManager.modules.get(AutoBlockIn.class);
             if(autoBlockIn.isEnabled()) return;
             if (this.targetBed != null) {
@@ -536,6 +568,9 @@ public class BedNuker extends Module {
     @EventTarget
     public void onLoadWorld(LoadWorldEvent event) {
         this.waitingForStart = false;
+        this.whitelistScanAt = -1L;
+        this.bedWhitelist.clear();
+        this.resetBreaking();
     }
 
     @EventTarget
@@ -550,22 +585,7 @@ public class BedNuker extends Module {
             if (event.getPacket() instanceof S08PacketPlayerPosLook && this.waitingForStart) {
                 this.waitingForStart = false;
                 this.bedWhitelist.clear();
-                this.scheduler.schedule(() -> {
-                    int sX = MathHelper.floor_double(mc.thePlayer.posX);
-                    int sY = MathHelper.floor_double(mc.thePlayer.posY + (double) mc.thePlayer.getEyeHeight());
-                    int sZ = MathHelper.floor_double(mc.thePlayer.posZ);
-                    for (int i = sX - 25; i <= sX + 25; i++) {
-                        for (int j = sY - 25; j <= sY + 25; j++) {
-                            for (int k = sZ - 25; k <= sZ + 25; k++) {
-                                BlockPos blockPos = new BlockPos(i, j, k);
-                                Block block = mc.theWorld.getBlockState(blockPos).getBlock();
-                                if (block instanceof BlockBed) {
-                                    this.bedWhitelist.add(blockPos);
-                                }
-                            }
-                        }
-                    }
-                }, 1L, TimeUnit.SECONDS);
+                this.scheduleWhitelistScan();
             }
             if (this.isEnabled() && this.targetBed != null && this.ignoreVelocity.getValue() == 2 && Myau.delayManager.getDelayModule() != DelayModules.BED_NUKER) {
                 if (event.getPacket() instanceof S12PacketEntityVelocity) {
@@ -628,6 +648,9 @@ public class BedNuker extends Module {
     public void onDisabled() {
         this.resetBreaking();
         this.savedSlot = -1;
+        this.waitingForStart = false;
+        this.whitelistScanAt = -1L;
+        this.bedWhitelist.clear();
         Myau.delayManager.setDelayState(false, DelayModules.BED_NUKER);
     }
 

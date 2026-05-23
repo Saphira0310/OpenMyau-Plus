@@ -2,6 +2,7 @@ package myau.module.modules;
 
 import myau.Myau;
 import myau.event.EventTarget;
+import myau.events.LoadWorldEvent;
 import myau.events.Render3DEvent;
 import myau.mixin.IAccessorRenderManager;
 import myau.module.Module;
@@ -73,7 +74,7 @@ public class BedESP extends Module {
 
     @EventTarget
     public void onRender3D(Render3DEvent event) {
-        if (this.isEnabled()) {
+        if (this.isEnabled() && mc.theWorld != null) {
             RenderUtil.enableRenderState();
             for (BlockPos blockPos : this.beds) {
                 IBlockState state = mc.theWorld.getBlockState(blockPos);
@@ -144,8 +145,19 @@ public class BedESP extends Module {
 
     @Override
     public void onEnabled() {
+        this.beds.clear();
         if (mc.renderGlobal != null) {
             mc.renderGlobal.loadRenderers();
         }
+    }
+
+    @EventTarget
+    public void onLoadWorld(LoadWorldEvent event) {
+        this.beds.clear();
+    }
+
+    @Override
+    public void onDisabled() {
+        this.beds.clear();
     }
 }
