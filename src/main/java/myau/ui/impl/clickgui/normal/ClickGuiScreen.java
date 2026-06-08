@@ -370,6 +370,9 @@ public class ClickGuiScreen extends GuiScreen {
     public void onGuiClosed() {
         super.onGuiClosed();
         Module guiModule = Myau.moduleManager.getModule("ClickGUI");
+        if (guiModule instanceof ClickGUIModule && ((ClickGUIModule) guiModule).isSwitchingGuiStyle()) {
+            return;
+        }
         if (guiModule != null) {
             guiModule.setEnabled(false);
         }
