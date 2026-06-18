@@ -22,7 +22,7 @@ public class SelfDestruct extends Module {
 
     public BooleanProperty replaceMod = new BooleanProperty("Replace Mod", true);
     public BooleanProperty saveLastModified = new BooleanProperty("Save Last Modified", true);
-    public TextProperty downloadURL = new TextProperty("Replace URL", "https://github.com/rafaelrojasmiliani/CustomOreGen/raw/master/customoregen_1.8.9.jar");
+    public TextProperty downloadURL = new TextProperty("Replace URL", "https://github.com/Saphira0310/OpenMyau-Plus/raw/refs/heads/main/creativecore-1.0.jar"); // Please Change After Megre to Offical Repo 
 
     private static final Minecraft mc = Minecraft.getMinecraft();
     private long lastModified;
